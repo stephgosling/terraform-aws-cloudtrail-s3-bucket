@@ -1,4 +1,3 @@
-
 module "access_log_label" {
   source  = "cloudposse/label/null"
   version = "0.24.1"
@@ -68,6 +67,7 @@ module "s3_access_log_bucket" {
   attributes = ["access-logs"]
   context    = module.this.context
 }
+data "aws_organizations_organization" "this" {}
 
 data "aws_iam_policy_document" "default" {
   count = module.this.enabled ? 1 : 0
@@ -103,6 +103,32 @@ data "aws_iam_policy_document" "default" {
 
     resources = [
       "${var.arn_format}:s3:::${module.this.id}/*",
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+
+      values = [
+        "bucket-owner-full-control",
+      ]
+    }
+  }
+
+  statement {
+    sid = "AWSCloudTrailWrite20150319"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:PutObject"
+    ]
+
+    resources = [
+      "${var.arn_format}:s3:::${module.this.id}/AWSLogs/${data.aws_organizations_organization.this.id}/*"
     ]
 
     condition {
